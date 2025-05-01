@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Folder: <%= folder.name %></title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <h1>Folder: <%= folder.name %></h1>
+
+    <p><strong>Folder ID:</strong> <%= folder.id %></p>
+    <p><strong>Created By (User ID):</strong> <%= folder.userId %></p>
+
+    <hr />
+
+    <h2>Files in this Folder</h2>
+
+    <% if (folder.files.length === 0) { %>
+    <p>This folder has no files.</p>
+    <% } else { %>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Size (bytes)</th>
+          <th>Uploaded At</th>
+          <th>Download</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% folder.files.forEach(file => { %>
+        <tr>
+          <td><%= file.name %></td>
+          <td><%= file.size %></td>
+          <td><%= new Date(file.uploadAt).toLocaleString() %></td>
+          <td>
+            <a href="/files/download/<%=file.id %>">Download</a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+
+    <hr />
+
+    <h3>Upload a New File to this Folder</h3>
+    <form
+      action="/folders/<%= folder.id %>/upload"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      <input type="file" name="files" required />
+      <button type="submit">Upload</button>
+    </form>
+
+    <br />
+    <a href="/folders">← Back to Folders</a>
+  </body>
+</html>

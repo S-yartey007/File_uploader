@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Your Folders</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <h1>Your Folders</h1>
+    <h1><a href="/">Home</a></h1>
+
+    <% if (folders.length === 0) { %>
+    <p>You have no folders yet.</p>
+    <% } else { %>
+    <ul>
+      <% folders.forEach(folder => { %>
+      <li>
+        <h2><%= folder.name %></h2>
+        <p>Folder ID: <%= folder.id %></p>
+        <p>Created for user ID: <%= folder.userId %></p>
+
+        <!-- Optional: show number of files -->
+        <p>Files: <%= folder.files ? folder.files.length : 0 %></p>
+
+        <!-- View Files in Folder -->
+        <a href="/folders/<%= folder.id %>">View Files</a>
+
+        <!-- Edit Folder Name -->
+        <form
+          action="/folders/<%= folder.id %>/edit/?_method=PUT"
+          method="POST"
+          style="display: inline"
+        >
+          <input type="text" name="name" placeholder="New name" required />
+          <button type="submit">Rename</button>
+        </form>
+
+        <!-- Delete Folder -->
+        <form
+          action="/folders/<%= folder.id %>?_method=DELETE"
+          method="POST"
+          style="display: inline"
+        >
+          <button type="submit">Delete</button>
+        </form>
+      </li>
+      <% }) %>
+    </ul>
+    <% } %>
+
+    <h3>Create a New Folder</h3>
+    <form action="/folders/create" method="POST">
+      <input type="text" name="name" placeholder="Folder name" required />
+      <button type="submit">Create Folder</button>
+    </form>
+  </body>
+</html>

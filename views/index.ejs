@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Storage App</title>
+  </head>
+  <body>
+    <h1>Welcome to Personal Storage</h1>
+
+    <% if (locals.currentUser) { %>
+    <p>Hello, <%= currentUser.email %>!</p>
+    <a href="/folders/create">create folder</a>
+    <a href="/users/logout">Logout</a>
+    <a href="/folders">See your folders</a>
+
+    <% } else { %>
+    <a href="/users/login">Login</a> |
+    <a href="/users/signup">Sign Up</a>
+    <% } %>
+  </body>
+</html>
