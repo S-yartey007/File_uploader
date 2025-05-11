@@ -61,8 +61,8 @@ const folderRouter = require("./routers/folderRouter");
 
 app.use("/", homeRouter);
 app.use("/users", userRouter);
-app.use("/files", fileRouter);
-app.use("/folders", folderRouter);
+app.use("/files", isAuthenticated, fileRouter);
+app.use("/folders", isAuthenticated, folderRouter);
 
 app.post("/register", async (req, res) => {
   const { email, password } = req.body;
@@ -85,7 +85,7 @@ app.post(
   })
 );
 
-app.get("/users/logout", (req, res, next) => {
+app.get("/users/logout", isAuthenticated, (req, res, next) => {
   req.logout((err) => {
     if (err) {
       return next(err);
