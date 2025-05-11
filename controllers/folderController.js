@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const cloudinary = require("../cloudinaryConfig");
 const path = require("path");
 const fs = require("fs");
 async function getCreateFolder(req, res) {
@@ -43,34 +44,58 @@ async function deleteFolder(req, res) {
 
     if (!folder) return res.status(404).send("Folder not found.");
 
-    // Delete files from filesystem
-    folder.files.forEach((file) => {
-      const parentDir = path.dirname(__dirname);
-      const filePath = path.join(parentDir, "uploads", folder.name, file.name);
-      console.log(filePath);
-      if (fs.existsSync(filePath)) {
-        console.log("exits", filePath);
-        fs.unlinkSync(filePath);
-      }
-    });
+    const folderName = `uploads/${folder.name.trim()}`; // Cloudinary folder path
+    await cloudinary.api.delete_resources_by_prefix(folderName);
+    console.log("Files deletion initiated...");
 
+    await cloudinary.api.delete_folder(folderName);
+    console.log("Deleted folder");
     // Delete files from DB
     await prisma.file.deleteMany({ where: { folderId } });
 
     // Delete folder from DB
     await prisma.folder.delete({ where: { id: folderId } });
 
-    // Optionally delete the physical folder
-    const parentDir = path.dirname(__dirname);
-    const folderPath = path.join(parentDir, "uploads", folder.name);
-    if (fs.existsSync(folderPath)) {
-      fs.rmSync(folderPath, { recursive: true, force: true });
-    }
-
     res.redirect("/folders");
   } catch (err) {
     console.error("Error deleting folder:", err);
-    res.status(500).send("Failed to delete folder.");
+    res.render("deleteError", { err });
+  }
+}
+
+async function shareFolder(req, res) {
+  const folderId = req.params.id;
+  const { duration } = req.body; // E.g., "1d", "10d"
+
+  const days = parseInt(duration.replace("d", ""), 10);
+  if (isNaN(days)) return res.status(400).send("Invalid duration format.");
+
+  function addDays(date, days) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+  try {
+    const folder = await prisma.folder.findUnique({ where: { id: folderId } });
+    if (!folder) return res.status(404).send("Folder not found");
+
+    const expiresAt = addDays(new Date(), days);
+
+    const sharedLink = await prisma.sharedLink.create({
+      data: {
+        folderId: folder.id,
+        expiresAt,
+      },
+    });
+
+    const publicUrl = `${req.protocol}://${req.get("host")}/share/${
+      sharedLink.id
+    }`;
+
+    res.render("shareSuccess", { publicUrl, expiresAt });
+  } catch (err) {
+    console.error("Error sharing folder:", err);
+    res.status(500).send("Unable to share folder.");
   }
 }
 
@@ -117,6 +142,11 @@ async function updateName(req, res) {
     res.status(500).send("Failed to update folder.");
   }
 }
+
+async function getShare(req, res) {
+  const id = req.params.id;
+  res.render("shareForm", { id });
+}
 async function getFolder(req, res) {
   const folder = await prisma.folder.findUnique({
     where: {
@@ -135,4 +165,6 @@ module.exports = {
   postFolder,
   deleteFolder,
   updateName,
+  shareFolder,
+  getShare,
 };

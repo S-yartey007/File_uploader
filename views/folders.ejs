@@ -18,6 +18,7 @@
         <h2><%= folder.name %></h2>
         <p>Folder ID: <%= folder.id %></p>
         <p>Created for user ID: <%= folder.userId %></p>
+        <h2><a href="/folders/<%=folder.id %>/share">share</a></h2>
 
         <!-- Optional: show number of files -->
         <p>Files: <%= folder.files ? folder.files.length : 0 %></p>

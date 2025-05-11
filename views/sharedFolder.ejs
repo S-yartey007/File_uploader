@@ -9,7 +9,6 @@
     <h1>Folder: <%= folder.name %></h1>
 
     <p><strong>Folder ID:</strong> <%= folder.id %></p>
-    <p><strong>Created By (User ID):</strong> <%= folder.userId %></p>
 
     <hr />
 
@@ -41,20 +40,5 @@
       </tbody>
     </table>
     <% } %>
-
-    <hr />
-
-    <h3>Upload a New File to this Folder</h3>
-    <form
-      action="/folders/<%= folder.id %>/upload"
-      method="POST"
-      enctype="multipart/form-data"
-    >
-      <input type="file" name="file" required />
-      <button type="submit">Upload</button>
-    </form>
-
-    <br />
-    <a href="/folders">← Back to Folders</a>
   </body>
 </html>

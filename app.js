@@ -1,5 +1,8 @@
 require("dotenv").config();
-const mutlerConfig = require("./mutlerConfig");
+//const mutlerConfig = require("./mutlerConfig");
+const cloudinary = require("./cloudinaryConfig");
+const multer = require("multer");
+const streamifier = require("streamifier");
 const express = require("express");
 const session = require("express-session");
 const passport = require("./passportConfig");
@@ -47,7 +50,6 @@ app.use(passport.session());
 //middleware for the current user
 app.use((req, res, next) => {
   res.locals.currentUser = req.user;
-  console.log("currentUser", res.locals.currentUser);
   next();
 });
 
@@ -96,38 +98,17 @@ function isAuthenticated(req, res, next) {
   res.status(401).json({ message: "Unauthorized" });
 }
 
-// Sample upload route
-app.post(
-  "/file/upload",
-  isAuthenticated,
-  mutlerConfig.fileUpload.single("file"),
-  async (req, res) => {
-    try {
-      const file = await prisma.file.create({
-        data: {
-          name: req.file.originalname,
-          size: req.file.size,
-          user: { connect: { id: req.user.id } },
-          url: `/uploads/${req.file.filename}`,
-        },
-      });
-      res.status(200).json(file);
-    } catch (err) {
-      res.status(500).json({ error: "File upload failed" });
-    }
-  }
-);
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 app.post(
   "/folders/:id/upload",
   isAuthenticated,
-  mutlerConfig.folderUpload.array("files"),
+  upload.single("file"), // allow only one file
   async (req, res) => {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).send("No folder or files uploaded.");
+    if (!req.file) {
+      return res.status(400).send("No file uploaded.");
     }
-
-    console.log("Uploaded files:");
 
     try {
       const folder = await prisma.folder.findUnique({
@@ -137,30 +118,69 @@ app.post(
       if (!folder) {
         return res.status(404).json({ error: "Folder not found." });
       }
+      const folderName = folder.name.trim();
 
-      // Save each uploaded file to the database and associate it with the folder
-      const files = await Promise.all(
-        req.files.map(async (file) => {
-          const filePath = path.join("uploads", file.originalname); // Full path of uploaded file
-          return await prisma.file.create({
-            data: {
-              name: file.originalname,
-              size: file.size,
-              user: { connect: { id: req.user.id } },
-              folder: { connect: { id: folder.id } },
-              url: filePath,
-            },
-          });
-        })
-      );
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: `uploads/${folderName}`,
+          },
+          (error, result) => {
+            if (error) {
+              return reject(error);
+            }
+            resolve(result);
+          }
+        );
 
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+
+      // Save file info in DB
+      await prisma.file.create({
+        data: {
+          name: req.file.originalname,
+          size: req.file.size,
+          user: { connect: { id: req.user.id } },
+          folder: { connect: { id: folder.id } },
+          url: result.secure_url,
+        },
+      });
       res.redirect(`/folders/${req.params.id}`);
     } catch (err) {
       console.error(err);
-      res.status(500).send("Error uploading folder.");
+      res.render("uploadError", { folderId: req.params.id, err });
     }
   }
 );
+
+app.get("/share/:uuid", async (req, res) => {
+  const { uuid } = req.params;
+
+  try {
+    const sharedLink = await prisma.sharedLink.findUnique({
+      where: { id: uuid },
+      include: {
+        folder: {
+          include: { files: true },
+        },
+      },
+    });
+
+    if (!sharedLink) return res.status(404).send("Invalid or expired link");
+
+    if (new Date() > sharedLink.expiresAt) {
+      return res.status(403).send("This link has expired");
+    }
+
+    res.render("sharedFolder", {
+      folder: sharedLink.folder,
+    });
+  } catch (err) {
+    console.error("Error loading shared folder:", err);
+    res.status(500).send("Error accessing shared folder.");
+  }
+});
 
 // Start server
 app.listen(PORT, () => {
