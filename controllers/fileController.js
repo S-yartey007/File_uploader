@@ -27,10 +27,13 @@ async function downloadFile(req, res) {
     console.log(filePath);
     res.download(filePath, file.name);  */ // Sends the file for download
     const cloudinaryUrl = file.url;
+    console.log("cloudinaryUrl", cloudinaryUrl);
+
     const downloadUrl = cloudinaryUrl.replace(
       "/upload/",
-      "/upload/fl_attachment/"
+      `/upload/fl_attachment/`
     );
+    console.log("downloadUrl", downloadUrl);
     res.redirect(downloadUrl);
   } catch (error) {
     console.error("Download error:", error);
