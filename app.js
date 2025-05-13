@@ -110,6 +110,16 @@ app.post(
       return res.status(400).send("No file uploaded.");
     }
 
+    const mime = req.file.mimetype;
+
+    const isValidType = mime.startsWith("image/") || mime.startsWith("video/");
+    if (!isValidType) {
+      return res.status(400).render("errorFile", {
+        title: "Invalid Upload",
+        folderId: req.params.id,
+      });
+    }
+
     try {
       const folder = await prisma.folder.findUnique({
         where: { id: req.params.id },
@@ -123,6 +133,7 @@ app.post(
       const result = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
+            resource_type: "auto", // auto-detects image/video
             folder: `uploads/${folderName}`,
           },
           (error, result) => {
